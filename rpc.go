@@ -66,6 +66,7 @@ func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
 		reply.P_Output, reply.P_Error = res.p_out, res.p_err
 	}
 
+	close(req.chRes)
 	return nil
 }
 
