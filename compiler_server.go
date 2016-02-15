@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"strings"
-	"time"
 )
 
 // Compiler server

@@ -3,9 +3,6 @@
 package lotsawa
 
 import (
-	"errors"
-	"log"
-	"strings"
 	"time"
 )
 
