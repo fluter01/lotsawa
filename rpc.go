@@ -3,7 +3,6 @@
 package lotsawa
 
 import (
-	"log"
 	"net"
 	"net/rpc"
 	"time"
@@ -15,12 +14,14 @@ type CompileArgs struct {
 }
 
 type CompileReply struct {
-	Result string
-	Output string
-	Cmd    string
-	Main   bool
-	Error  string
-	Time   time.Duration
+	Cmd      string
+	Main     bool
+	Error    string
+	Time     time.Duration
+	C_Output string
+	C_Error  string
+	P_Output string
+	P_Error  string
 }
 
 // RPC service
@@ -35,8 +36,6 @@ func NewCompileService(server *CompilerServer) *CompileService {
 }
 
 func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
-	log.Println(args, reply)
-
 	req := &Request{
 		received: time.Now(),
 		args:     args,
@@ -49,11 +48,11 @@ func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
 	res.done = time.Now()
 
 	reply.Time = res.done.Sub(req.received)
-	if res.err != "" {
-		reply.Error = res.err
-	} else {
-		reply.Result, reply.Output, reply.Cmd, reply.Main = res.result,
-			res.output, res.cmd, res.main
+
+	reply.Error, reply.Cmd, reply.Main = res.err, res.cmd, res.main
+	reply.C_Output, reply.C_Error = res.c_out, res.c_err
+	if res.main {
+		reply.P_Output, reply.P_Error = res.p_out, res.p_err
 	}
 
 	return nil

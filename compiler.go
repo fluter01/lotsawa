@@ -24,12 +24,18 @@ type Request struct {
 
 // Struct hold compile result
 type Result struct {
-	done   time.Time
-	result string
-	output string
-	cmd    string
-	err    string
-	main   bool
+	done time.Time
+
+	main bool
+	cmd  string
+
+	c_err string
+	c_out string
+
+	err string
+
+	p_out string
+	p_err string
 }
 
 // Compiler server

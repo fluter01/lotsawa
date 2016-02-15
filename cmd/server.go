@@ -21,5 +21,5 @@ func main() {
 	}
 
 	fmt.Println("Server running on", addr)
-	s.Run()
+	s.Wait()
 }

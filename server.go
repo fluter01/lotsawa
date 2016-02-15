@@ -31,12 +31,12 @@ func NewServer(addr string) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Run() {
+func (s *Server) Wait() {
 	s.compSvr.Run()
 	s.rpcSvr.Wait()
 }
 
-func (s *Server) Run2() {
+func (s *Server) Run() {
 	s.compSvr.Run()
 	s.rpcSvr.Run()
 }
