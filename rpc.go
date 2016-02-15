@@ -9,19 +9,30 @@ import (
 )
 
 type CompileArgs struct {
+	// The code to compile
 	Code string
+
+	// The language of the code
 	Lang string
 }
 
 type CompileReply struct {
-	Cmd      string
-	Main     bool
-	Error    string
-	Time     time.Duration
+	// The command line used to compile this piece of code
+	Cmd string
+	// Whether the code has main function and can be executed
+	Main bool
+	// Errors during the compiling
+	Error string
+	// Time took to compile and run the program
+	Time time.Duration
+	// Compiler's standard output
 	C_Output string
-	C_Error  string
+	// Compiler's standard error
+	C_Error string
+	// The program's standard error, if compiled successfully and had main
 	P_Output string
-	P_Error  string
+	// The program's standard output, if compiled successfully and had main
+	P_Error string
 }
 
 // RPC service

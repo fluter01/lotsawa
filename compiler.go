@@ -9,134 +9,57 @@ import (
 	"time"
 )
 
-// The compiler interface.
+// Compiler is the interface that represents a compiler.
+// Each compiler implements this interface, and registers
+// itself to the compiler server to serve client's request.
 type Compiler interface {
+	// Returns the name of this compiler
 	Name() string
+
+	// Returns the version of this compiler
+	Version() string
+
+	// Do initialization work, for example, check whether files
+	// required are present or not.
+	// Returns an error if the compiler cannot function.
+	// The compiler server will ignore this compiler if Init() failed.
 	Init() error
+
+	// Compile the code given as a string
 	Compile(string) *Result
 }
 
 type Request struct {
+	// Time when the compiling started
 	received time.Time
-	args     *CompileArgs
-	chRes    chan *Result
+
+	args  *CompileArgs
+	chRes chan *Result
 }
 
-// Struct hold compile result
+// Struct hold the compiling result
 type Result struct {
+	// Time when the compiling finished
 	done time.Time
 
+	// Whether the code has main function and can be executed
 	main bool
-	cmd  string
 
+	// The command line used to compile this piece of code
+	cmd string
+
+	// Compiler's standard error
 	c_err string
+
+	// Compiler's standard output
 	c_out string
 
+	// Errors during the compiling
 	err string
 
+	// The program's standard error, if compiled successfully and had main
 	p_out string
+
+	// The program's standard output, if compiled successfully and had main
 	p_err string
-}
-
-// Compiler server
-type CompilerServer struct {
-	chReq  chan *Request
-	chExit chan bool
-
-	compilers map[string]Compiler
-}
-
-func NewCompilerServer() *CompilerServer {
-	s := new(CompilerServer)
-
-	s.chReq = make(chan *Request)
-	s.chExit = make(chan bool)
-	s.compilers = make(map[string]Compiler)
-
-	s.AddCompiler("C", new(CCompiler))
-
-	return s
-}
-
-func (s *CompilerServer) AddCompiler(name string, c Compiler) {
-	name = strings.ToUpper(name)
-	s.compilers[name] = c
-}
-
-func (s *CompilerServer) DelCompiler(name string) {
-	delete(s.compilers, name)
-}
-
-func (s *CompilerServer) GetCompiler(name string) Compiler {
-	name = strings.ToUpper(name)
-	return s.compilers[name]
-}
-
-func (s *CompilerServer) ListCompiler() []string {
-	var keys []string
-
-	for key := range s.compilers {
-		keys = append(keys, key)
-	}
-	return keys
-}
-
-func (s *CompilerServer) Init() error {
-	var err error
-	var cnt int
-
-	for name, comp := range s.compilers {
-		err = comp.Init()
-		if err != nil {
-			log.Printf("%s init failed: %s", name, err)
-		} else {
-			cnt++
-		}
-	}
-	if cnt == 0 {
-		return errors.New("Error: no compiler available to run")
-	}
-	return nil
-}
-
-func (s *CompilerServer) Loop() {
-	var req *Request
-	var stop bool = false
-	for !stop {
-		select {
-		case req = <-s.chReq:
-			s.handle(req)
-			break
-		case stop = <-s.chExit:
-			break
-		}
-	}
-}
-
-func (s *CompilerServer) handle(req *Request) {
-	var lang string
-	var c Compiler
-	var res *Result
-
-	lang = req.args.Lang
-	c = s.GetCompiler(lang)
-
-	if c == nil {
-		res = &Result{
-			err: "Language not supported.",
-		}
-	} else {
-		res = c.Compile(req.args.Code)
-	}
-
-	req.chRes <- res
-	return
-}
-
-func (s *CompilerServer) Submit(req *Request) {
-	s.chReq <- req
-}
-
-func (s *CompilerServer) Run() {
-	go s.Loop()
 }
