@@ -1,2 +1,2 @@
 # lotsawa
-an pluggable compiler service
+a pluggable compiler service
