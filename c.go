@@ -100,6 +100,7 @@ func (c *CCompiler) Compile(code string) *Result {
 
 	dir, err = ioutil.TempDir(DataStore, c.Name())
 	if err != nil {
+		log.Println("Failed to create data store:", err)
 		result.err = err.Error()
 		return &result
 	}
