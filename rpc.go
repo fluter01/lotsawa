@@ -92,6 +92,10 @@ func (c *CompileServiceStub) Compile(args *CompileArgs, reply *CompileReply) err
 	return err
 }
 
+func (c *CompileServiceStub) Close() error {
+	return c.client.Close()
+}
+
 // RPC server
 type RpcServer struct {
 	svr    *rpc.Server

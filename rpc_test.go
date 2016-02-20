@@ -46,6 +46,7 @@ func testRun(code, lang string, t *testing.T) *CompileReply {
 	startServer()
 
 	s := getClient(t)
+	defer s.Close()
 
 	var arg CompileArgs = CompileArgs{code, lang}
 	var res CompileReply
