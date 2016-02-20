@@ -12,10 +12,13 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
 	DataStore = "store"
+
+	runTimeout = 3
 )
 
 const (
@@ -154,12 +157,45 @@ func (c *CCompiler) Compile(code string) *Result {
 		runCmd = exec.Command(execFile)
 		runCmd.Stdout = &execOut
 		runCmd.Stderr = &execErr
-		err = runCmd.Run()
-		result.p_out, result.p_err = execOut.String(), execErr.String()
-		if err != nil {
-			log.Println("error run:", err)
-			result.err = execFile + ": " + err.Error()
-			return &result
+
+		chCmdDone := make(chan bool)
+		go func() {
+			err = runCmd.Run()
+			if err != nil {
+				log.Println("error run:", err)
+				result.err = execFile + ": " + err.Error()
+			}
+			chCmdDone <- true
+		}()
+		var done bool
+		select {
+		case done = <-chCmdDone:
+			break
+		case <-time.After(runTimeout * time.Second):
+			if !done {
+				log.Println("program timeout, killing")
+				err = runCmd.Process.Kill()
+				if err != nil {
+					log.Println("kill error:", err)
+				}
+				st, err := runCmd.Process.Wait()
+				if err != nil {
+					log.Println("wait error:", err)
+				}
+				log.Println("state:", st)
+				result.err += fmt.Sprintf(" program killed after %d seconds", runTimeout)
+			}
+			break
+		}
+		if execOut.Len() < 500 {
+			result.p_out = execOut.String()
+		} else {
+			result.p_out = string(execOut.Next(500)) + "..."
+		}
+		if execErr.Len() < 500 {
+			result.p_err = execErr.String()
+		} else {
+			result.p_err = string(execOut.Next(500)) + "..."
 		}
 	}
 

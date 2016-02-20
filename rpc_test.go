@@ -52,8 +52,7 @@ func testRun(code, lang string, t *testing.T) *CompileReply {
 	err = s.Compile(&arg, &res)
 
 	if err != nil {
-		t.Fail()
-		fmt.Println("Failed to call rpc service:", err)
+		t.Error(err)
 		return nil
 	}
 	return &res
@@ -74,7 +73,7 @@ func (r *CompileReply) String() string {
 func TestCompile1(t *testing.T) {
 	res := testRun("abc", "c", t)
 
-	fmt.Println(res)
+	t.Log(res)
 }
 
 func TestCompile2(t *testing.T) {
@@ -87,7 +86,7 @@ func TestCompile2(t *testing.T) {
 	`
 	res := testRun(code, "c", t)
 
-	fmt.Println(res)
+	t.Log(res)
 }
 
 func TestCompile3(t *testing.T) {
@@ -99,7 +98,7 @@ func TestCompile3(t *testing.T) {
 	`
 	res := testRun(code, "c", t)
 
-	fmt.Println(res)
+	t.Log(res)
 }
 
 func TestCompile4(t *testing.T) {
@@ -115,7 +114,7 @@ func TestCompile4(t *testing.T) {
 	`
 	res := testRun(code, "c", t)
 
-	fmt.Println(res)
+	t.Log(res)
 }
 
 func TestCompile5(t *testing.T) {
@@ -129,7 +128,7 @@ func TestCompile5(t *testing.T) {
 	`
 	res := testRun(code, "c", t)
 
-	fmt.Println(res)
+	t.Log(res)
 }
 
 func TestCompile6(t *testing.T) {
@@ -144,7 +143,7 @@ func TestCompile6(t *testing.T) {
 	`
 	res := testRun(code, "c", t)
 
-	fmt.Println(res)
+	t.Log(res)
 }
 
 func TestCompile7(t *testing.T) {
@@ -160,5 +159,21 @@ func TestCompile7(t *testing.T) {
 	`
 	res := testRun(code, "c", t)
 
-	fmt.Println(res)
+	t.Log(res)
+}
+
+func TestCompile8(t *testing.T) {
+	var code string = `
+	#include <stdio.h>
+	int main(int argc, char *argv[]) {
+		while (1) {
+			printf("+");
+			;
+		}
+		return 0;
+	}
+	`
+	res := testRun(code, "c", t)
+
+	t.Log(res)
 }
