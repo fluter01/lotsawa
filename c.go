@@ -88,7 +88,6 @@ func (c *CCompiler) Version() string {
 }
 
 func (c *CCompiler) Compile(code string) *Result {
-	var runCmd *exec.Cmd
 	var err error
 	var fsrc *os.File
 	var srcReader *bytes.Reader
@@ -126,12 +125,8 @@ func (c *CCompiler) Compile(code string) *Result {
 	if !result.main {
 		args = append(c.options, "-xc", "-o", objFile, "-c", "-")
 
-		runCmd = exec.Command(c.path, args...)
-		runCmd.Stdout = &stdOut
-		runCmd.Stderr = &stdErr
-		runCmd.Stdin = srcReader
-		err = runCmd.Run()
-		result.cmd = strings.Join(runCmd.Args, " ")
+		err = run(c.path, args, "", srcReader, &stdOut, &stdErr)
+		result.cmd = strings.Join(args, " ")
 		result.c_out, result.c_err = stdOut.String(), stdErr.String()
 		if err != nil {
 			result.err = "gcc: " + err.Error()
@@ -139,12 +134,9 @@ func (c *CCompiler) Compile(code string) *Result {
 		}
 	} else {
 		args = append(c.options, "-xc", "-o", execFile, "-")
-		runCmd = exec.Command(c.path, args...)
-		runCmd.Stdout = &stdOut
-		runCmd.Stderr = &stdErr
-		runCmd.Stdin = srcReader
-		err = runCmd.Run()
-		result.cmd = strings.Join(runCmd.Args, " ")
+
+		err = run(c.path, args, "", srcReader, &stdOut, &stdErr)
+		result.cmd = strings.Join(args, " ")
 		result.c_out, result.c_err = stdOut.String(), stdErr.String()
 		if err != nil {
 			result.err = "gcc: " + err.Error()
@@ -152,39 +144,12 @@ func (c *CCompiler) Compile(code string) *Result {
 		}
 
 		var execOut, execErr bytes.Buffer
-		runCmd = exec.Command(execFile)
-		runCmd.Stdout = &execOut
-		runCmd.Stderr = &execErr
-
-		chCmdDone := make(chan bool)
-		go func() {
-			err = runCmd.Run()
-			if err != nil {
-				log.Println("error run:", err)
-				result.err = execFile + ": " + err.Error()
-			}
-			chCmdDone <- true
-		}()
-		var done bool
-		select {
-		case done = <-chCmdDone:
-			break
-		case <-time.After(runTimeout * time.Second):
-			if !done {
-				log.Println("program timeout, killing")
-				err = runCmd.Process.Kill()
-				if err != nil {
-					log.Println("kill error:", err)
-				}
-				st, err := runCmd.Process.Wait()
-				if err != nil {
-					log.Println("wait error:", err)
-				}
-				log.Println("state:", st)
-				result.err += fmt.Sprintf(" program killed after %d seconds", runTimeout)
-			}
-			break
+		err = runTimed(execFile, nil, "", nil, &execOut, &execErr, runTimeout*time.Second)
+		if err != nil {
+			log.Println("error run:", err)
+			result.err = execFile + ": " + err.Error()
 		}
+
 		if execOut.Len() < 500 {
 			result.p_out = execOut.String()
 		} else {
