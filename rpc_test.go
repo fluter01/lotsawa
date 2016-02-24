@@ -75,6 +75,9 @@ func TestCompile1(t *testing.T) {
 	res := testRun("abc", "c", t)
 
 	t.Log(res)
+	if res.Main || res.Error == "" {
+		t.Fail()
+	}
 }
 
 func TestCompile2(t *testing.T) {
@@ -88,6 +91,9 @@ func TestCompile2(t *testing.T) {
 	res := testRun(code, "c", t)
 
 	t.Log(res)
+	if !res.Main || res.Error != "" {
+		t.Fail()
+	}
 }
 
 func TestCompile3(t *testing.T) {
@@ -100,6 +106,9 @@ func TestCompile3(t *testing.T) {
 	res := testRun(code, "c", t)
 
 	t.Log(res)
+	if res.Main || res.Error != "" || res.C_Error == "" {
+		t.Fail()
+	}
 }
 
 func TestCompile4(t *testing.T) {

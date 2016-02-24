@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	DataStore = "store"
-
 	runTimeout = 3
 )
 

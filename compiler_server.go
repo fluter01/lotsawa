@@ -5,8 +5,11 @@ package lotsawa
 import (
 	"errors"
 	"log"
+	"os"
 	"strings"
 )
+
+const DataStore = "store"
 
 // Compiler server
 type CompilerServer struct {
@@ -28,6 +31,7 @@ func NewCompilerServer() *CompilerServer {
 	return s
 }
 
+// manage compilers
 func (s *CompilerServer) AddCompiler(name string, c Compiler) {
 	name = strings.ToUpper(name)
 	s.compilers[name] = c
@@ -65,6 +69,28 @@ func (s *CompilerServer) Init() error {
 	}
 	if cnt == 0 {
 		return errors.New("Error: no compiler available to run")
+	}
+
+	fi, err := os.Stat(DataStore)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("data store %s does not exists, creating now", DataStore)
+			err = os.MkdirAll(DataStore, 0775)
+			if err != nil {
+				log.Printf("could not create %s: %s", DataStore, err)
+				return err
+			} else {
+				log.Printf("ok")
+			}
+		} else {
+			log.Printf("could not access data store %s: %s", DataStore, err)
+			return err
+		}
+	} else {
+		if !fi.IsDir() {
+			log.Printf("data store(%s) exists, but is not directory", DataStore)
+			return errors.New("data store(" + DataStore + ") exists, but is not directory")
+		}
 	}
 	return nil
 }
