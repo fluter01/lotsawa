@@ -81,6 +81,7 @@ func runTimed(name string,
 		}
 		break
 	}
+	close(chDone)
 
 	return err
 }

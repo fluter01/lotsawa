@@ -109,8 +109,8 @@ func (c *CCompiler) Compile(code string) *Result {
 
 	srcFile, objFile, execFile =
 		fmt.Sprintf("%s/%s", dir, Fsrc),
-		fmt.Sprintf("%s/%s", dir, Fobj),
-		fmt.Sprintf("%s/%s", dir, Fbin)
+		fmt.Sprintf("./%s", Fobj),
+		fmt.Sprintf("./%s", Fbin)
 
 	fsrc, err = os.Create(srcFile)
 	if err != nil {
@@ -125,7 +125,7 @@ func (c *CCompiler) Compile(code string) *Result {
 	if !result.main {
 		args = append(c.options, "-xc", "-o", objFile, "-c", "-")
 
-		err = run(c.path, args, "", srcReader, &stdOut, &stdErr)
+		err = run(c.path, args, dir, srcReader, &stdOut, &stdErr)
 		result.cmd = strings.Join(args, " ")
 		result.c_out, result.c_err = stdOut.String(), stdErr.String()
 		if err != nil {
@@ -135,7 +135,7 @@ func (c *CCompiler) Compile(code string) *Result {
 	} else {
 		args = append(c.options, "-xc", "-o", execFile, "-")
 
-		err = run(c.path, args, "", srcReader, &stdOut, &stdErr)
+		err = run(c.path, args, dir, srcReader, &stdOut, &stdErr)
 		result.cmd = strings.Join(args, " ")
 		result.c_out, result.c_err = stdOut.String(), stdErr.String()
 		if err != nil {
@@ -144,7 +144,7 @@ func (c *CCompiler) Compile(code string) *Result {
 		}
 
 		var execOut, execErr bytes.Buffer
-		err = runTimed(execFile, nil, "", nil, &execOut, &execErr, runTimeout*time.Second)
+		err = runTimed(execFile, nil, dir, nil, &execOut, &execErr, runTimeout*time.Second)
 		if err != nil {
 			log.Println("error run:", err)
 			result.err = execFile + ": " + err.Error()

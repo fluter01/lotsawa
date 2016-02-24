@@ -187,3 +187,18 @@ func TestCompile8(t *testing.T) {
 
 	t.Log(res)
 }
+
+func TestCompile9(t *testing.T) {
+	var code string = `
+	#include <stdio.h>
+	int main(int argc, char *argv[]) {
+		FILE *fp = fopen("foo.txt", "w");
+		fprintf(fp, "hello\n");
+		fclose(fp);
+		return 0;
+	}
+	`
+	res := testRun(code, "c", t)
+
+	t.Log(res)
+}
