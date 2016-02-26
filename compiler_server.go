@@ -92,6 +92,12 @@ func (s *CompilerServer) Init() error {
 			return errors.New("data store(" + DataStore + ") exists, but is not directory")
 		}
 	}
+
+	err = initContainer()
+	if err != nil {
+		log.Printf("container init failed: %s", err)
+		log.Printf("will use unrestricted host execution")
+	}
 	return nil
 }
 

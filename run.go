@@ -6,7 +6,14 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
+	"syscall"
 	"time"
+
+	"github.com/opencontainers/runc/libcontainer"
+	"github.com/opencontainers/runc/libcontainer/configs"
+	"github.com/opencontainers/specs"
 )
 
 func run(name string,
@@ -86,5 +93,118 @@ func runTimed(name string,
 	return err
 }
 
-func runInSandbox() {
+const (
+	fspec = "config.json"
+	fconf = "container.json"
+)
+
+var (
+	spec          *specs.LinuxSpec
+	master_config *configs.Config
+	factory       libcontainer.Factory
+	use_container bool
+)
+
+func initContainer() error {
+	var err error
+	spec, err = loadSpec(fspec)
+	if err != nil {
+		return err
+	}
+
+	factory, err = createFactory()
+	if err != nil {
+		return err
+	}
+
+	master_config, err = loadConfig(spec, fconf)
+	if err != nil {
+		return err
+	}
+	use_container = true
+	return nil
+}
+
+func runContainer(name string,
+	args []string,
+	wd string,
+	stdin io.Reader,
+	stdout io.Writer,
+	stderr io.Writer) error {
+	var err error
+	var id string
+
+	id = path.Base(wd)
+
+	// mount base rootfs with working directory
+	rootfs := spec.Root.Path
+	lowerdir := rootfs
+	upperdir, err := filepath.Abs(wd)
+	if err != nil {
+		log.Println("abs err:", wd, err)
+		return err
+	}
+	workdir, err := filepath.Abs(fmt.Sprintf("%s-%s", wd, "work"))
+	if err != nil {
+		log.Println("abs err:", wd, err)
+		return err
+	}
+
+	err = os.Mkdir(workdir, 0775)
+	if err != nil && !os.IsExist(err) {
+		log.Printf("failed to create workdir %s: %s", workdir, err)
+		return err
+	}
+	defer os.RemoveAll(workdir)
+	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s",
+		lowerdir, upperdir, workdir)
+	err = syscall.Mount("overlay", upperdir, "overlay", syscall.MS_MGC_VAL,
+		opts)
+	if err != nil {
+		log.Println("mount failed:", err)
+		return err
+	}
+	defer func() {
+		err := syscall.Unmount(upperdir, 0)
+		if err != nil {
+			log.Printf("unmount error: %s\n", err)
+		}
+	}()
+
+	// set cgroup path
+	var config configs.Config
+	config = *master_config
+	config.Cgroups.Path = fmt.Sprintf("%s/%s",
+		config.Cgroups.Path, id)
+	config.Rootfs = upperdir
+	container, err := factory.Create(id, &config)
+	if err != nil {
+		log.Printf("create %s error: %s\n", id, err)
+		return err
+	}
+	defer container.Destroy()
+
+	args = append([]string{name}, args...)
+	process := &libcontainer.Process{
+		Args:   args,
+		Env:    []string{"PATH=/bin:/sbin:/usr/bin:/usr/sbin"},
+		User:   "root",
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+	}
+
+	err = container.Start(process)
+	if err != nil {
+		log.Printf("start container %s error: %s\n", id, err)
+		return err
+	}
+
+	_, err = process.Wait()
+	if err != nil {
+		log.Printf("wait %s error: %s\n", id, err)
+		return err
+	}
+
+	return nil
 }

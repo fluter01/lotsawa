@@ -105,6 +105,13 @@ func (c *CCompiler) Compile(code string) *Result {
 		return &result
 	}
 
+	err = os.Chmod(dir, 0775)
+	if err != nil {
+		log.Println("Failed to chown:", err)
+		result.err = err.Error()
+		return &result
+	}
+
 	srcReader = bytes.NewReader([]byte(code))
 
 	srcFile, objFile, execFile =
@@ -144,7 +151,14 @@ func (c *CCompiler) Compile(code string) *Result {
 		}
 
 		var execOut, execErr bytes.Buffer
-		err = runTimed(execFile, nil, dir, nil, &execOut, &execErr, runTimeout*time.Second)
+
+		log.Println(use_container)
+		if use_container {
+			err = runContainer(execFile, nil, dir, nil, &execOut, &execErr)
+		} else {
+			err = runTimed(execFile, nil, dir, nil,
+				&execOut, &execErr, runTimeout*time.Second)
+		}
 		if err != nil {
 			log.Println("error run:", err)
 			result.err = execFile + ": " + err.Error()
