@@ -152,7 +152,6 @@ func (c *CCompiler) Compile(code string) *Result {
 
 		var execOut, execErr bytes.Buffer
 
-		log.Println(use_container)
 		if use_container {
 			err = runContainer(execFile, nil, dir, nil, &execOut, &execErr)
 		} else {
