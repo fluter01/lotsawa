@@ -2,9 +2,15 @@
 
 package lotsawa
 
+import "log"
+
 type Server struct {
 	compSvr *CompilerServer
 	rpcSvr  *RpcServer
+}
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
 func NewServer(addr string) (*Server, error) {

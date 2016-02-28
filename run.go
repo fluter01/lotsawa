@@ -43,7 +43,7 @@ func run(name string,
 	err = cmd.Run()
 
 	if err != nil {
-		log.Printf("Error run %s: %s", cmd, err)
+		log.Printf("Error run %s: %s", name, err)
 		return err
 	}
 	return nil
@@ -70,7 +70,7 @@ func runTimed(name string,
 	go func() {
 		err := cmd.Run()
 		if err != nil {
-			log.Printf("Error run %s: %s", cmd, err)
+			log.Printf("Error run %s: %s", name, err)
 		}
 		chDone <- true
 	}()
@@ -91,13 +91,14 @@ func runTimed(name string,
 			if err != nil {
 				log.Println("wait error:", err)
 			}
-			log.Println("state:", st)
+			if st != nil {
+				log.Println("state:", st)
+			}
 			err = fmt.Errorf("program killed after %s",
 				t.Sub(start).String())
 		}
 		break
 	}
-	close(chDone)
 
 	return err
 }
