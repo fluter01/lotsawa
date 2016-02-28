@@ -52,7 +52,7 @@ func loadSpec(path string) (spec *specs.LinuxSpec, err error) {
 	return spec, validateSpec(spec)
 }
 
-func loadConfig(spec *specs.LinuxSpec, path string) (*configs.Config, error) {
+func loadConfig(path string) (*configs.Config, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -153,7 +153,8 @@ func (c *CCompiler) Compile(code string) *Result {
 		var execOut, execErr bytes.Buffer
 
 		if use_container {
-			err = runContainer(execFile, nil, dir, nil, &execOut, &execErr)
+			err = runContainerTimed(execFile, nil, dir, nil,
+				&execOut, &execErr, runTimeout*time.Second)
 		} else {
 			err = runTimed(execFile, nil, dir, nil,
 				&execOut, &execErr, runTimeout*time.Second)
