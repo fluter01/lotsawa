@@ -142,8 +142,7 @@ func TestCompile5(t *testing.T) {
 }
 
 func TestCompile6(t *testing.T) {
-	var code string = `
-	#include <stdio.h>
+	var code string = `#include <stdio.h>
 	int main(int argc, char *argv[]) {
 		int *p = 3;
 		fprintf(stdout, "output to stdout\n");
@@ -193,6 +192,7 @@ func TestCompile9(t *testing.T) {
 	#include <stdio.h>
 	int main(int argc, char *argv[]) {
 		FILE *fp = fopen("foo.txt", "w");
+		perror("fopen");
 		fprintf(fp, "hello\n");
 		fclose(fp);
 		return 0;

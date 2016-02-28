@@ -52,3 +52,27 @@ func TestContainer2(t *testing.T) {
 	t.Log(stdout.String())
 	t.Log(stderr.String())
 }
+
+func TestContainer3(t *testing.T) {
+	err := initContainer()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	err = runContainerTimed("touch",
+		[]string{"foo"},
+		"store/GCC775507155",
+		nil,
+		&stdout,
+		&stderr,
+		3*time.Second)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(stdout.String())
+	t.Log(stderr.String())
+}

@@ -25,6 +25,42 @@ const (
 	Fbin = "prog"
 )
 
+const prelude = `
+#define _XOPEN_SOURCE 9001
+#define __USE_XOPEN
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdarg.h>
+#include <stdnoreturn.h>
+#include <stdalign.h>
+#include <ctype.h>
+#include <inttypes.h>
+#include <float.h>
+#include <errno.h>
+#include <time.h>
+#include <assert.h>
+#include <complex.h>
+#include <setjmp.h>
+#include <wchar.h>
+#include <wctype.h>
+#include <tgmath.h>
+#include <fenv.h>
+#include <locale.h>
+#include <iso646.h>
+#include <signal.h>
+#include <uchar.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+#line 1
+`
+
 // int main()
 // int main(void)
 // int main(int argc, char* argv[])
@@ -112,7 +148,7 @@ func (c *CCompiler) Compile(code string) *Result {
 		return &result
 	}
 
-	srcReader = bytes.NewReader([]byte(code))
+	srcReader = bytes.NewReader([]byte(prelude + code))
 
 	srcFile, objFile, execFile =
 		fmt.Sprintf("%s/%s", dir, Fsrc),
