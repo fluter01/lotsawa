@@ -3,6 +3,7 @@ package lotsawa
 import (
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -13,6 +14,8 @@ const addr = "127.0.0.1:1234"
 func TestFoo(t *testing.T) {
 	fmt.Println(os.TempDir())
 }
+
+var once sync.Once
 
 func startServer() {
 	if s != nil {
@@ -43,7 +46,7 @@ func getClient(t *testing.T) *CompileServiceStub {
 
 func testRun(code, lang string, t *testing.T) *CompileReply {
 	var err error
-	startServer()
+	once.Do(startServer)
 
 	s := getClient(t)
 	defer s.Close()
@@ -200,4 +203,29 @@ func TestCompile9(t *testing.T) {
 	res := testRun(code, "c", t)
 
 	t.Log(res)
+}
+
+func TestCompile10(t *testing.T) {
+	var wg sync.WaitGroup
+
+	for j := 0; j < 10; j++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < 10; i++ {
+				var code string = `
+	#include <stdio.h>
+	int main(int argc, char *argv[]) {
+		puts("in prog %d");
+		return 0;
+	}
+	`
+				code = fmt.Sprintf(code, i)
+				res := testRun(code, "c", t)
+
+				t.Log(res)
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 }

@@ -54,9 +54,8 @@ func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
 
 	res := <-req.chRes
 
-	reply.Time = time.Now().Sub(req.received)
-
 	*reply = res.CompileReply
+	reply.Time = time.Now().Sub(req.received)
 
 	close(req.chRes)
 	return nil
