@@ -3,7 +3,6 @@
 package lotsawa
 
 import (
-	"net"
 	"net/rpc"
 	"time"
 )
@@ -20,8 +19,6 @@ type CompileReply struct {
 	// The command line used to compile this piece of code
 	Cmd string
 	// Whether the code has main function and can be executed
-	Main bool
-	// Errors during the compiling
 	Error string
 	// Time took to compile and run the program
 	Time time.Duration
@@ -29,9 +26,9 @@ type CompileReply struct {
 	C_Output string
 	// Compiler's standard error
 	C_Error string
-	// The program's standard error, if compiled successfully and had main
+	// The program's standard error, if compiled successfully and run
 	P_Output string
-	// The program's standard output, if compiled successfully and had main
+	// The program's standard output, if compiled successfully and run
 	P_Error string
 }
 
@@ -56,15 +53,10 @@ func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
 	c.server.Submit(req)
 
 	res := <-req.chRes
-	res.done = time.Now()
 
-	reply.Time = res.done.Sub(req.received)
+	reply.Time = time.Now().Sub(req.received)
 
-	reply.Error, reply.Cmd, reply.Main = res.err, res.cmd, res.main
-	reply.C_Output, reply.C_Error = res.c_out, res.c_err
-	if res.main {
-		reply.P_Output, reply.P_Error = res.p_out, res.p_err
-	}
+	*reply = res.CompileReply
 
 	close(req.chRes)
 	return nil
@@ -94,44 +86,4 @@ func (c *CompileServiceStub) Compile(args *CompileArgs, reply *CompileReply) err
 
 func (c *CompileServiceStub) Close() error {
 	return c.client.Close()
-}
-
-// RPC server
-type RpcServer struct {
-	svr    *rpc.Server
-	l      *net.TCPListener
-	addr   *net.TCPAddr
-	server *Server
-}
-
-func NewRpcServer(server *Server, addr string) (*RpcServer, error) {
-	var err error
-	s := new(RpcServer)
-	s.svr = rpc.NewServer()
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	s.addr = tcpAddr
-	s.server = server
-
-	return s, nil
-}
-
-func (s *RpcServer) Init() error {
-	l, err := net.ListenTCP("tcp", s.addr)
-	if err != nil {
-		return err
-	}
-	s.l = l
-	s.svr.Register(NewCompileService(s.server.compSvr))
-	return nil
-}
-
-func (s *RpcServer) Run() {
-	go s.svr.Accept(s.l)
-}
-
-func (s *RpcServer) Wait() {
-	s.svr.Accept(s.l)
 }

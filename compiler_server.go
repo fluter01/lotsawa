@@ -7,9 +7,20 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 const DataStore = "store"
+
+// Struct holds the compile request
+type Request struct {
+	// Time when the compiling started
+	received time.Time
+	// rpc args
+	args *CompileArgs
+	// channel to receive compiler's result
+	chRes chan *Result
+}
 
 // Compiler server
 type CompilerServer struct {
@@ -124,8 +135,11 @@ func (s *CompilerServer) handle(req *Request) {
 	c = s.GetCompiler(lang)
 
 	if c == nil {
+		cr := CompileReply{
+			Error: "Language not supported.",
+		}
 		res = &Result{
-			err: "Language not supported.",
+			CompileReply: cr,
 		}
 	} else {
 		res = c.Compile(req.args.Code)

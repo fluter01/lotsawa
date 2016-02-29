@@ -60,9 +60,8 @@ func testRun(code, lang string, t *testing.T) *CompileReply {
 }
 
 func (r *CompileReply) String() string {
-	return fmt.Sprintf("Cmd: %s\nExec:%t, Took:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
+	return fmt.Sprintf("Cmd: %s\n, Took:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
 		r.Cmd,
-		r.Main,
 		r.Time,
 		r.Error,
 		r.C_Output,
@@ -75,7 +74,7 @@ func TestCompile1(t *testing.T) {
 	res := testRun("abc", "c", t)
 
 	t.Log(res)
-	if res.Main || res.Error == "" {
+	if res.Error == "" {
 		t.Fail()
 	}
 }
@@ -91,7 +90,7 @@ func TestCompile2(t *testing.T) {
 	res := testRun(code, "c", t)
 
 	t.Log(res)
-	if !res.Main || res.Error != "" {
+	if res.Error != "" {
 		t.Fail()
 	}
 }
@@ -106,7 +105,7 @@ func TestCompile3(t *testing.T) {
 	res := testRun(code, "c", t)
 
 	t.Log(res)
-	if res.Main || res.Error != "" || res.C_Error == "" {
+	if res.Error != "" || res.C_Error == "" {
 		t.Fail()
 	}
 }

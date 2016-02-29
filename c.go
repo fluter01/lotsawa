@@ -137,14 +137,14 @@ func (c *CCompiler) Compile(code string) *Result {
 	dir, err = ioutil.TempDir(DataStore, c.Name())
 	if err != nil {
 		log.Println("Failed to create data store:", err)
-		result.err = err.Error()
+		result.Error = err.Error()
 		return &result
 	}
 
 	err = os.Chmod(dir, 0775)
 	if err != nil {
 		log.Println("Failed to chown:", err)
-		result.err = err.Error()
+		result.Error = err.Error()
 		return &result
 	}
 
@@ -157,32 +157,32 @@ func (c *CCompiler) Compile(code string) *Result {
 
 	fsrc, err = os.Create(srcFile)
 	if err != nil {
-		result.err = err.Error()
+		result.Error = err.Error()
 		return &result
 	}
 	_, err = io.Copy(fsrc, srcReader)
 
-	result.main = c.detectMain(code)
+	main := c.detectMain(code)
 
 	srcReader.Seek(0, 0)
-	if !result.main {
+	if !main {
 		args = append(c.options, "-xc", "-o", objFile, "-c", "-")
 
 		err = run(c.path, args, dir, srcReader, &stdOut, &stdErr)
-		result.cmd = strings.Join(args, " ")
-		result.c_out, result.c_err = stdOut.String(), stdErr.String()
+		result.Cmd = strings.Join(args, " ")
+		result.C_Output, result.C_Error = stdOut.String(), stdErr.String()
 		if err != nil {
-			result.err = "gcc: " + err.Error()
+			result.Error = "gcc: " + err.Error()
 			return &result
 		}
 	} else {
 		args = append(c.options, "-xc", "-o", execFile, "-")
 
 		err = run(c.path, args, dir, srcReader, &stdOut, &stdErr)
-		result.cmd = strings.Join(args, " ")
-		result.c_out, result.c_err = stdOut.String(), stdErr.String()
+		result.Cmd = strings.Join(args, " ")
+		result.C_Output, result.C_Error = stdOut.String(), stdErr.String()
 		if err != nil {
-			result.err = "gcc: " + err.Error()
+			result.Error = "gcc: " + err.Error()
 			return &result
 		}
 
@@ -197,18 +197,18 @@ func (c *CCompiler) Compile(code string) *Result {
 		}
 		if err != nil {
 			log.Println("error run:", err)
-			result.err = execFile + ": " + err.Error()
+			result.Error = execFile + ": " + err.Error()
 		}
 
 		if execOut.Len() < 500 {
-			result.p_out = execOut.String()
+			result.P_Output = execOut.String()
 		} else {
-			result.p_out = string(execOut.Next(500)) + "..."
+			result.P_Output = string(execOut.Next(500)) + "..."
 		}
 		if execErr.Len() < 500 {
-			result.p_err = execErr.String()
+			result.P_Error = execErr.String()
 		} else {
-			result.p_err = string(execOut.Next(500)) + "..."
+			result.P_Error = string(execOut.Next(500)) + "..."
 		}
 	}
 

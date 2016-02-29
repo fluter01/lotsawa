@@ -1,3 +1,5 @@
+// Copyright 2016 Alex Fluter
+
 package lotsawa
 
 import (
