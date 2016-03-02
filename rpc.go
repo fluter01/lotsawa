@@ -5,6 +5,8 @@ package lotsawa
 import (
 	"net/rpc"
 	"time"
+
+	"github.com/fluter01/lotsawa/lang"
 )
 
 type CompileArgs struct {
@@ -47,14 +49,19 @@ func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
 	req := &Request{
 		received: time.Now(),
 		args:     args,
-		chRes:    make(chan *Result),
+		chRes:    make(chan *lang.Result),
 	}
 
 	c.server.Submit(req)
 
 	res := <-req.chRes
 
-	*reply = res.CompileReply
+	reply.Cmd = res.Cmd
+	reply.Error = res.Error
+	reply.C_Output = res.C_Output
+	reply.C_Error = res.C_Error
+	reply.P_Output = res.P_Output
+	reply.P_Error = res.P_Error
 	reply.Time = time.Now().Sub(req.received)
 
 	close(req.chRes)

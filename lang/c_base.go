@@ -1,6 +1,6 @@
 // Copyright 2016 Alex Fluter
 
-package lotsawa
+package lang
 
 import (
 	"bytes"
@@ -25,42 +25,6 @@ const (
 	Fbin = "prog"
 )
 
-const prelude = `
-#define _XOPEN_SOURCE 9001
-#define __USE_XOPEN
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <stdnoreturn.h>
-#include <stdalign.h>
-#include <ctype.h>
-#include <inttypes.h>
-#include <float.h>
-#include <errno.h>
-#include <time.h>
-#include <assert.h>
-#include <complex.h>
-#include <setjmp.h>
-#include <wchar.h>
-#include <wctype.h>
-#include <tgmath.h>
-#include <fenv.h>
-#include <locale.h>
-#include <iso646.h>
-#include <signal.h>
-#include <uchar.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <sys/types.h>
-
-#line 1
-`
-
 // int main()
 // int main(void)
 // int main(int argc, char* argv[])
@@ -74,16 +38,18 @@ const mainPtn = "(int|void)\\s+main\\s*\\("
 
 var mainRe = regexp.MustCompile(mainPtn)
 
-type CCompiler struct {
+// The base compiler for C language
+type CBase struct {
 	path    string
+	prelude string
 	options []string
 }
 
-func (c *CCompiler) Name() string {
-	return "GCC"
+func (c *CBase) Name() string {
+	return "GCC Base"
 }
 
-func (c *CCompiler) Init() error {
+func (c *CBase) Init() error {
 	var path string
 	var err error
 
@@ -91,24 +57,14 @@ func (c *CCompiler) Init() error {
 	if err != nil {
 		return err
 	}
-	log.Println("gcc is:", path)
 	c.path = path
 
-	c.options = []string{
-		"-Wextra",
-		"-Wall",
-		"-Wno-unused",
-		"-pedantic",
-		"-Wfloat-equal",
-		"-Wshadow",
-		"-std=c11",
-		"-lm",
-		"-Wfatal-errors",
-		"-fsanitize=alignment,undefined"}
+	c.options = []string{}
+	c.prelude = ""
 	return nil
 }
 
-func (c *CCompiler) Version() string {
+func (c *CBase) Version() string {
 	var runCmd *exec.Cmd
 	var err error
 	var stdOut bytes.Buffer
@@ -123,7 +79,7 @@ func (c *CCompiler) Version() string {
 	return stdOut.String()
 }
 
-func (c *CCompiler) Compile(code string) *Result {
+func (c *CBase) compile(code, prelude string) *Result {
 	var err error
 	var fsrc *os.File
 	var srcReader *bytes.Reader
@@ -136,7 +92,7 @@ func (c *CCompiler) Compile(code string) *Result {
 
 	dir, err = ioutil.TempDir(DataStore, c.Name())
 	if err != nil {
-		log.Println("Failed to create data store:", err)
+		log.Println("Failed to create workspace:", err)
 		result.Error = err.Error()
 		return &result
 	}
@@ -215,7 +171,7 @@ func (c *CCompiler) Compile(code string) *Result {
 	return &result
 }
 
-func (c *CCompiler) detectMain(code string) bool {
+func (c *CBase) detectMain(code string) bool {
 	if mainRe.FindString(code) != "" {
 		return true
 	}

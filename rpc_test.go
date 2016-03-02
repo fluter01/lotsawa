@@ -63,7 +63,7 @@ func testRun(code, lang string, t *testing.T) *CompileReply {
 }
 
 func (r *CompileReply) String() string {
-	return fmt.Sprintf("Cmd: %s\n, Took:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
+	return fmt.Sprintf("Cmd: %s\nTook:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
 		r.Cmd,
 		r.Time,
 		r.Error,
@@ -87,6 +87,7 @@ func TestCompile2(t *testing.T) {
 	#include <stdio.h>
 	int main(void) {
 		puts("hello");
+		printf("%d\n", __STDC_NO_THREADS__);
 		return 0;
 	}
 	`

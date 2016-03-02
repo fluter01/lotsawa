@@ -1,8 +1,9 @@
 // Copyright 2016 Alex Fluter
 
-package lotsawa
+package lang
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -10,11 +11,13 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	"github.com/opencontainers/specs"
 )
 
 const (
@@ -105,7 +108,19 @@ func runTimed(name string,
 	return err
 }
 
-func initContainer() error {
+func init() {
+	if len(os.Args) > 1 && os.Args[1] == "init" {
+		runtime.GOMAXPROCS(1)
+		runtime.LockOSThread()
+		factory, _ := libcontainer.New("")
+		if err := factory.StartInitialization(); err != nil {
+			log.Fatal(err)
+		}
+		panic("--this line should have never been executed, congratulations--")
+	}
+}
+
+func InitContainer() error {
 	var err error
 
 	factory, err = createFactory()
@@ -121,6 +136,45 @@ func initContainer() error {
 	return nil
 }
 
+func loadConfig(path string) (*configs.Config, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("JSON specification file %s not found", path)
+		}
+		return nil, err
+	}
+	defer f.Close()
+
+	var config configs.Config
+	if err = json.NewDecoder(f).Decode(&config); err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+func createFactory() (libcontainer.Factory, error) {
+	root := specs.LinuxStateDirectory
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	return libcontainer.New(abs, libcontainer.Cgroupfs, func(l *libcontainer.LinuxFactory) error {
+		l.CriuPath = "criu"
+		return nil
+	})
+}
+
+func createProcess(name string, stdin io.Reader, stdout, stderr io.Writer) *libcontainer.Process {
+	return &libcontainer.Process{
+		Args:   []string{name},
+		Env:    []string{"PATH=/bin:/sbin:/usr/bin:/usr/sbin"},
+		User:   "root",
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+	}
+}
 func runContainer(name string,
 	args []string,
 	wd string,

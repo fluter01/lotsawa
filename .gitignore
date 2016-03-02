@@ -29,3 +29,5 @@ store/
 a.out
 *.json
 rootfs
+
+*.txt

@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 	"time"
-)
 
-const DataStore = "store"
+	"github.com/fluter01/lotsawa/lang"
+)
 
 // Struct holds the compile request
 type Request struct {
@@ -19,7 +19,7 @@ type Request struct {
 	// rpc args
 	args *CompileArgs
 	// channel to receive compiler's result
-	chRes chan *Result
+	chRes chan *lang.Result
 }
 
 // Compiler server
@@ -27,7 +27,7 @@ type CompilerServer struct {
 	chReq  chan *Request
 	chExit chan bool
 
-	compilers map[string]Compiler
+	compilers map[string]lang.Compiler
 }
 
 func NewCompilerServer() *CompilerServer {
@@ -35,15 +35,19 @@ func NewCompilerServer() *CompilerServer {
 
 	s.chReq = make(chan *Request)
 	s.chExit = make(chan bool)
-	s.compilers = make(map[string]Compiler)
+	s.compilers = make(map[string]lang.Compiler)
 
-	s.AddCompiler("C", new(CCompiler))
+	// C defaults to C11
+	s.AddCompiler("C", new(lang.C11))
+	s.AddCompiler("C11", new(lang.C11))
+	s.AddCompiler("C99", new(lang.C99))
+	s.AddCompiler("C89", new(lang.C89))
 
 	return s
 }
 
 // manage compilers
-func (s *CompilerServer) AddCompiler(name string, c Compiler) {
+func (s *CompilerServer) AddCompiler(name string, c lang.Compiler) {
 	name = strings.ToUpper(name)
 	s.compilers[name] = c
 }
@@ -52,7 +56,7 @@ func (s *CompilerServer) DelCompiler(name string) {
 	delete(s.compilers, name)
 }
 
-func (s *CompilerServer) GetCompiler(name string) Compiler {
+func (s *CompilerServer) GetCompiler(name string) lang.Compiler {
 	name = strings.ToUpper(name)
 	return s.compilers[name]
 }
@@ -82,29 +86,29 @@ func (s *CompilerServer) Init() error {
 		return errors.New("Error: no compiler available to run")
 	}
 
-	fi, err := os.Stat(DataStore)
+	fi, err := os.Stat(lang.DataStore)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("data store %s does not exists, creating now", DataStore)
-			err = os.MkdirAll(DataStore, 0775)
+			log.Printf("data store %s does not exists, creating now", lang.DataStore)
+			err = os.MkdirAll(lang.DataStore, 0775)
 			if err != nil {
-				log.Printf("could not create %s: %s", DataStore, err)
+				log.Printf("could not create %s: %s", lang.DataStore, err)
 				return err
 			} else {
 				log.Printf("ok")
 			}
 		} else {
-			log.Printf("could not access data store %s: %s", DataStore, err)
+			log.Printf("could not access data store %s: %s", lang.DataStore, err)
 			return err
 		}
 	} else {
 		if !fi.IsDir() {
-			log.Printf("data store(%s) exists, but is not directory", DataStore)
-			return errors.New("data store(" + DataStore + ") exists, but is not directory")
+			log.Printf("data store(%s) exists, but is not directory", lang.DataStore)
+			return errors.New("data store(" + lang.DataStore + ") exists, but is not directory")
 		}
 	}
 
-	err = initContainer()
+	err = lang.InitContainer()
 	if err != nil {
 		log.Printf("container init failed: %s", err)
 		log.Printf("will use unrestricted host execution")
@@ -127,19 +131,14 @@ func (s *CompilerServer) Loop() {
 }
 
 func (s *CompilerServer) handle(req *Request) {
-	var lang string
-	var c Compiler
-	var res *Result
+	var c lang.Compiler
+	var res *lang.Result
 
-	lang = req.args.Lang
-	c = s.GetCompiler(lang)
+	c = s.GetCompiler(req.args.Lang)
 
 	if c == nil {
-		cr := CompileReply{
+		res = &lang.Result{
 			Error: "Language not supported.",
-		}
-		res = &Result{
-			CompileReply: cr,
 		}
 	} else {
 		res = c.Compile(req.args.Code)
