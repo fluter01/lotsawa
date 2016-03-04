@@ -60,5 +60,5 @@ func (c *C99) Init() error {
 }
 
 func (c *C99) Compile(code string) *Result {
-	return c.compile(code, c.prelude)
+	return c.compile(c, code, c.prelude)
 }

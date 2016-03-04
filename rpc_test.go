@@ -230,3 +230,13 @@ func TestCompile10(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestBash(t *testing.T) {
+	var code string = `
+	pwd
+	uname -a
+	`
+	res := testRun(code, "bash", t)
+
+	t.Log(res)
+}

@@ -42,6 +42,9 @@ func NewCompilerServer() *CompilerServer {
 	s.AddCompiler("C11", new(lang.C11))
 	s.AddCompiler("C99", new(lang.C99))
 	s.AddCompiler("C89", new(lang.C89))
+	// alias sh to bash
+	s.AddCompiler("sh", new(lang.Bash))
+	s.AddCompiler("Bash", new(lang.Bash))
 
 	return s
 }

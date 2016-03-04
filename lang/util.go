@@ -3,9 +3,11 @@
 package lang
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -36,6 +38,31 @@ func run(name string,
 	stdin io.Reader,
 	stdout io.Writer,
 	stderr io.Writer) error {
+	if use_container {
+		return runContainer(name, args, wd, stdin, stdout, stderr)
+	}
+	return runLocal(name, args, wd, stdin, stdout, stderr)
+}
+
+func runTimed(name string,
+	args []string,
+	wd string,
+	stdin io.Reader,
+	stdout io.Writer,
+	stderr io.Writer,
+	timeout time.Duration) error {
+	if use_container {
+		return runContainerTimed(name, args, wd, stdin, stdout, stderr, timeout)
+	}
+	return runLocalTimed(name, args, wd, stdin, stdout, stderr, timeout)
+}
+
+func runLocal(name string,
+	args []string,
+	wd string,
+	stdin io.Reader,
+	stdout io.Writer,
+	stderr io.Writer) error {
 	var err error
 	var cmd *exec.Cmd
 
@@ -54,7 +81,7 @@ func run(name string,
 	return nil
 }
 
-func runTimed(name string,
+func runLocalTimed(name string,
 	args []string,
 	wd string,
 	stdin io.Reader,
@@ -353,4 +380,47 @@ func runContainerTimed(name string,
 	}
 
 	return nil
+}
+
+func createWorkspace(c Compiler) (string, error) {
+	var dir string
+	var err error
+
+	dir, err = ioutil.TempDir(DataStore, c.Name())
+	if err != nil {
+		log.Println("Failed to create workspace:", err)
+		return "", err
+	}
+	err = os.Chmod(dir, 0775)
+	if err != nil {
+		log.Println("Failed to chown:", err)
+		return "", err
+	}
+
+	return dir, nil
+}
+
+func writeSource(path, code string) error {
+	var err error
+	var src *bytes.Reader
+
+	src = bytes.NewReader([]byte(code))
+	fsrc, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer fsrc.Close()
+	_, err = io.Copy(fsrc, src)
+	return err
+}
+
+func getStringBuffer(buf *bytes.Buffer) string {
+	if buf == nil {
+		return ""
+	}
+	if buf.Len() <= MaxLength {
+		return buf.String()
+	}
+
+	return string(buf.Next(256)) + "..."
 }

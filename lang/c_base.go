@@ -5,25 +5,14 @@ package lang
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 )
 
-const (
-	runTimeout = 3
-)
-
-const (
-	Fsrc = "prog.c"
-	Fobj = "prog.o"
-	Fbin = "prog"
-)
+const ()
 
 // int main()
 // int main(void)
@@ -43,6 +32,9 @@ type CBase struct {
 	path    string
 	prelude string
 	options []string
+	fsrc    string
+	fobj    string
+	fbin    string
 }
 
 func (c *CBase) Name() string {
@@ -61,6 +53,9 @@ func (c *CBase) Init() error {
 
 	c.options = []string{}
 	c.prelude = ""
+	c.fsrc = "prog.c"
+	c.fobj = "prog.o"
+	c.fbin = "prog"
 	return nil
 }
 
@@ -79,9 +74,8 @@ func (c *CBase) Version() string {
 	return stdOut.String()
 }
 
-func (c *CBase) compile(code, prelude string) *Result {
+func (c *CBase) compile(caller Compiler, code, prelude string) *Result {
 	var err error
-	var fsrc *os.File
 	var srcReader *bytes.Reader
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
@@ -90,16 +84,12 @@ func (c *CBase) compile(code, prelude string) *Result {
 	var srcFile, objFile, execFile string
 	var args []string
 
-	dir, err = ioutil.TempDir(DataStore, c.Name())
-	if err != nil {
-		log.Println("Failed to create workspace:", err)
-		result.Error = err.Error()
-		return &result
+	if caller == nil {
+		return nil
 	}
-
-	err = os.Chmod(dir, 0775)
+	dir, err = createWorkspace(caller)
 	if err != nil {
-		log.Println("Failed to chown:", err)
+		log.Println("Failed to setup workspace:", err)
 		result.Error = err.Error()
 		return &result
 	}
@@ -107,26 +97,25 @@ func (c *CBase) compile(code, prelude string) *Result {
 	srcReader = bytes.NewReader([]byte(prelude + code))
 
 	srcFile, objFile, execFile =
-		fmt.Sprintf("%s/%s", dir, Fsrc),
-		fmt.Sprintf("./%s", Fobj),
-		fmt.Sprintf("./%s", Fbin)
+		fmt.Sprintf("%s/%s", dir, c.fsrc),
+		fmt.Sprintf("./%s", c.fobj),
+		fmt.Sprintf("./%s", c.fbin)
 
-	fsrc, err = os.Create(srcFile)
+	err = writeSource(srcFile, code)
 	if err != nil {
+		log.Println("Failed to write source:", err)
 		result.Error = err.Error()
 		return &result
 	}
-	_, err = io.Copy(fsrc, srcReader)
-
 	main := c.detectMain(code)
 
-	srcReader.Seek(0, 0)
 	if !main {
 		args = append(c.options, "-xc", "-o", objFile, "-c", "-")
 
-		err = run(c.path, args, dir, srcReader, &stdOut, &stdErr)
+		err = runLocal(c.path, args, dir, srcReader, &stdOut, &stdErr)
 		result.Cmd = strings.Join(args, " ")
-		result.C_Output, result.C_Error = stdOut.String(), stdErr.String()
+		result.C_Output, result.C_Error =
+			getStringBuffer(&stdOut), getStringBuffer(&stdErr)
 		if err != nil {
 			result.Error = "gcc: " + err.Error()
 			return &result
@@ -134,9 +123,10 @@ func (c *CBase) compile(code, prelude string) *Result {
 	} else {
 		args = append(c.options, "-xc", "-o", execFile, "-")
 
-		err = run(c.path, args, dir, srcReader, &stdOut, &stdErr)
+		err = runLocal(c.path, args, dir, srcReader, &stdOut, &stdErr)
 		result.Cmd = strings.Join(args, " ")
-		result.C_Output, result.C_Error = stdOut.String(), stdErr.String()
+		result.C_Output, result.C_Error =
+			getStringBuffer(&stdOut), getStringBuffer(&stdErr)
 		if err != nil {
 			result.Error = "gcc: " + err.Error()
 			return &result
@@ -144,28 +134,15 @@ func (c *CBase) compile(code, prelude string) *Result {
 
 		var execOut, execErr bytes.Buffer
 
-		if use_container {
-			err = runContainerTimed(execFile, nil, dir, nil,
-				&execOut, &execErr, runTimeout*time.Second)
-		} else {
-			err = runTimed(execFile, nil, dir, nil,
-				&execOut, &execErr, runTimeout*time.Second)
-		}
+		err = runTimed(execFile, nil, dir, nil,
+			&execOut, &execErr, RunTimeout*time.Second)
 		if err != nil {
 			log.Println("error run:", err)
 			result.Error = execFile + ": " + err.Error()
 		}
 
-		if execOut.Len() < 500 {
-			result.P_Output = execOut.String()
-		} else {
-			result.P_Output = string(execOut.Next(500)) + "..."
-		}
-		if execErr.Len() < 500 {
-			result.P_Error = execErr.String()
-		} else {
-			result.P_Error = string(execOut.Next(500)) + "..."
-		}
+		result.P_Output, result.P_Error =
+			getStringBuffer(&execOut), getStringBuffer(&execErr)
 	}
 
 	return &result

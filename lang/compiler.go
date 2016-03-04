@@ -38,6 +38,14 @@ type Result struct {
 	P_Error string
 }
 
-// The directory to store the source and compiled binary files.
-// Any produced files by the program are also placed under it.
-const DataStore = "store"
+const (
+	// The directory to store the source and compiled binary files.
+	// Any produced files by the program are also placed under it.
+	DataStore = "store"
+
+	// Timeout seconds for running compiled programs.
+	RunTimeout = 3
+
+	// Max length of feedback
+	MaxLength = 256
+)
