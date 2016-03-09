@@ -45,6 +45,8 @@ func NewCompilerServer() *CompilerServer {
 	// alias sh to bash
 	s.AddCompiler("sh", new(lang.Bash))
 	s.AddCompiler("Bash", new(lang.Bash))
+	s.AddCompiler("Go", new(lang.Go))
+	s.AddCompiler("Golang", new(lang.Go))
 
 	return s
 }

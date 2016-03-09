@@ -75,7 +75,6 @@ func runLocal(name string,
 	err = cmd.Run()
 
 	if err != nil {
-		log.Printf("Error run %s: %s", name, err)
 		return err
 	}
 	return nil
@@ -100,10 +99,7 @@ func runLocalTimed(name string,
 	start := time.Now()
 	chDone := make(chan bool)
 	go func() {
-		err := cmd.Run()
-		if err != nil {
-			log.Printf("Error run %s: %s", name, err)
-		}
+		err = cmd.Run()
 		chDone <- true
 	}()
 
@@ -113,21 +109,11 @@ func runLocalTimed(name string,
 		break
 	case t := <-time.After(timeout):
 		if !done {
-			log.Println("program run timeout, killing")
-			err = cmd.Process.Kill()
-			if err != nil {
-				log.Println("kill error:", err)
-			}
+			cmd.Process.Kill()
 			var st *os.ProcessState
-			st, err = cmd.Process.Wait()
-			if err != nil {
-				log.Println("wait error:", err)
-			}
-			if st != nil {
-				log.Println("state:", st)
-			}
-			err = fmt.Errorf("program killed after %s",
-				t.Sub(start).String())
+			st, _ = cmd.Process.Wait()
+			err = fmt.Errorf("program killed after %s:%s",
+				t.Sub(start).String(), st)
 		}
 		break
 	}
@@ -218,18 +204,15 @@ func runContainer(name string,
 	lowerdir := rootfs
 	upperdir, err := filepath.Abs(wd)
 	if err != nil {
-		log.Println("abs err:", wd, err)
 		return err
 	}
 	workdir, err := filepath.Abs(fmt.Sprintf("%s-%s", wd, "work"))
 	if err != nil {
-		log.Println("abs err:", wd, err)
 		return err
 	}
 
 	err = os.Mkdir(workdir, 0775)
 	if err != nil && !os.IsExist(err) {
-		log.Printf("failed to create workdir %s: %s", workdir, err)
 		return err
 	}
 	defer os.RemoveAll(workdir)
@@ -238,13 +221,12 @@ func runContainer(name string,
 	err = syscall.Mount("overlay", upperdir, "overlay", syscall.MS_MGC_VAL,
 		opts)
 	if err != nil {
-		log.Println("mount failed:", err)
 		return err
 	}
 	defer func() {
 		err := syscall.Unmount(upperdir, 0)
 		if err != nil {
-			log.Printf("unmount error: %s\n", err)
+			return
 		}
 	}()
 
@@ -256,7 +238,6 @@ func runContainer(name string,
 	config.Rootfs = upperdir
 	container, err := factory.Create(id, &config)
 	if err != nil {
-		log.Printf("create %s error: %s\n", id, err)
 		return err
 	}
 	defer container.Destroy()
@@ -273,13 +254,11 @@ func runContainer(name string,
 
 	err = container.Start(process)
 	if err != nil {
-		log.Printf("start container %s error: %s\n", id, err)
 		return err
 	}
 
 	_, err = process.Wait()
 	if err != nil {
-		log.Printf("wait %s error: %s\n", id, err)
 		return err
 	}
 
@@ -303,18 +282,15 @@ func runContainerTimed(name string,
 	lowerdir := rootfs
 	upperdir, err := filepath.Abs(wd)
 	if err != nil {
-		log.Println("abs err:", wd, err)
 		return err
 	}
 	workdir, err := filepath.Abs(fmt.Sprintf("%s-%s", wd, "work"))
 	if err != nil {
-		log.Println("abs err:", wd, err)
 		return err
 	}
 
 	err = os.Mkdir(workdir, 0775)
 	if err != nil && !os.IsExist(err) {
-		log.Printf("failed to create workdir %s: %s", workdir, err)
 		return err
 	}
 	defer os.RemoveAll(workdir)
@@ -323,13 +299,12 @@ func runContainerTimed(name string,
 	err = syscall.Mount("overlay", upperdir, "overlay", syscall.MS_MGC_VAL,
 		opts)
 	if err != nil {
-		log.Println("mount failed:", err)
 		return err
 	}
 	defer func() {
 		err := syscall.Unmount(upperdir, 0)
 		if err != nil {
-			log.Printf("unmount error: %s\n", err)
+			return
 		}
 	}()
 
@@ -341,7 +316,6 @@ func runContainerTimed(name string,
 	config.Rootfs = upperdir
 	container, err := factory.Create(id, &config)
 	if err != nil {
-		log.Printf("create %s error: %s\n", id, err)
 		return err
 	}
 	defer container.Destroy()
@@ -360,13 +334,11 @@ func runContainerTimed(name string,
 	start := time.Now()
 	err = container.Start(process)
 	if err != nil {
-		log.Printf("start container %s error: %s\n", id, err)
 		return err
 	}
 
 	_, err = process.Wait()
 	if err != nil {
-		log.Printf("wait %s error: %s\n", id, err)
 		if ee, ok := err.(*exec.ExitError); ok {
 			pst := ee.ProcessState
 			if st, ok := pst.Sys().(syscall.WaitStatus); ok {
@@ -388,12 +360,10 @@ func createWorkspace(c Compiler) (string, error) {
 
 	dir, err = ioutil.TempDir(DataStore, c.Name())
 	if err != nil {
-		log.Println("Failed to create workspace:", err)
 		return "", err
 	}
 	err = os.Chmod(dir, 0775)
 	if err != nil {
-		log.Println("Failed to chown:", err)
 		return "", err
 	}
 
@@ -412,6 +382,19 @@ func writeSource(path, code string) error {
 	defer fsrc.Close()
 	_, err = io.Copy(fsrc, src)
 	return err
+}
+
+func setupWorkspace(c Compiler, sourcefile, code string) (string, error) {
+	dir, err := createWorkspace(c)
+	if err != nil {
+		return "", err
+	}
+	srcpath := fmt.Sprintf("%s/%s", dir, sourcefile)
+	err = writeSource(srcpath, code)
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
 }
 
 func getStringBuffer(buf *bytes.Buffer) string {

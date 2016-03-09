@@ -2,7 +2,6 @@ package lotsawa
 
 import (
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 )
@@ -11,25 +10,18 @@ var s *Server = nil
 
 const addr = "127.0.0.1:1234"
 
-func TestFoo(t *testing.T) {
-	fmt.Println(os.TempDir())
-}
-
 var once sync.Once
 
-func startServer() {
-	if s != nil {
-		return
-	}
+func startServer(t *testing.T) {
 	var err error
 
 	s, err = NewServer(addr)
 	if err != nil {
-		fmt.Println("Failed to create server:", err)
+		t.Fatal("Failed to create server:", err)
 		return
 	}
 
-	fmt.Println("Server running on", addr)
+	t.Log("Server running on", addr)
 	go s.Wait()
 }
 
@@ -44,24 +36,6 @@ func getClient(t *testing.T) *CompileServiceStub {
 	return s
 }
 
-func testRun(code, lang string, t *testing.T) *CompileReply {
-	var err error
-	once.Do(startServer)
-
-	s := getClient(t)
-	defer s.Close()
-
-	var arg CompileArgs = CompileArgs{code, lang}
-	var res CompileReply
-	err = s.Compile(&arg, &res)
-
-	if err != nil {
-		t.Error(err)
-		return nil
-	}
-	return &res
-}
-
 func (r *CompileReply) String() string {
 	return fmt.Sprintf("Cmd: %s\nTook:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
 		r.Cmd,
@@ -73,49 +47,23 @@ func (r *CompileReply) String() string {
 		r.P_Error)
 }
 
-func TestCompile1(t *testing.T) {
-	res := testRun("abc", "c", t)
-
-	t.Log(res)
-	if res.Error == "" {
-		t.Fail()
-	}
-}
-
-func TestCompile2(t *testing.T) {
-	var code string = `
+var testData []CompileArgs = []CompileArgs{
+	{`abc`, "c"},
+	{`
 	#include <stdio.h>
 	int main(void) {
 		puts("hello");
 		printf("%d\n", __STDC_NO_THREADS__);
 		return 0;
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
-	if res.Error != "" {
-		t.Fail()
-	}
-}
-
-func TestCompile3(t *testing.T) {
-	var code string = `
+	`, "c"},
+	{`
 	#include <stdio.h>
 	int foo(void) {
 		puts("foo");
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
-	if res.Error != "" || res.C_Error == "" {
-		t.Fail()
-	}
-}
-
-func TestCompile4(t *testing.T) {
-	var code string = `
+	`, "c"},
+	{`
 	#include <stdio.h>
 	int foo(void) {
 		puts("foo");
@@ -124,42 +72,24 @@ func TestCompile4(t *testing.T) {
 		foo();
 		return 0;
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
-}
-
-func TestCompile5(t *testing.T) {
-	var code string = `
+	`, "c"},
+	{`
 	#include <stdio.h>
 	int main(void) {
 		fprintf(stdout, "output to stdout\n");
 		fprintf(stderr, "output to stderr\n");
 		return 0;
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
-}
-
-func TestCompile6(t *testing.T) {
-	var code string = `#include <stdio.h>
+	`, "c"},
+	{`#include <stdio.h>
 	int main(int argc, char *argv[]) {
 		int *p = 3;
 		fprintf(stdout, "output to stdout\n");
 		fprintf(stderr, "output to stderr\n");
 		return 0;
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
-}
-
-func TestCompile7(t *testing.T) {
-	var code string = `
+	`, "c"},
+	{`
 	#include <stdio.h>
 	int main(int argc, char *argv[]) {
 		int *p = 3;
@@ -168,14 +98,8 @@ func TestCompile7(t *testing.T) {
 		fprintf(stderr, "output to stderr\n");
 		return 0;
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
-}
-
-func TestCompile8(t *testing.T) {
-	var code string = `
+	`, "c"},
+	{`
 	#include <stdio.h>
 	int main(int argc, char *argv[]) {
 		while (1) {
@@ -184,14 +108,8 @@ func TestCompile8(t *testing.T) {
 		}
 		return 0;
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
-}
-
-func TestCompile9(t *testing.T) {
-	var code string = `
+	`, "c"},
+	{`
 	#include <stdio.h>
 	int main(int argc, char *argv[]) {
 		FILE *fp = fopen("foo.txt", "w");
@@ -200,13 +118,36 @@ func TestCompile9(t *testing.T) {
 		fclose(fp);
 		return 0;
 	}
-	`
-	res := testRun(code, "c", t)
-
-	t.Log(res)
+	`, "c"},
+	{`
+	pwd
+	uname -a
+	`, "sh"},
+	{`
+	fmt.Println("hello")`, "go"},
 }
 
-func TestCompile10(t *testing.T) {
+func TestCompile(t *testing.T) {
+	var err error
+	startServer(t)
+
+	s := getClient(t)
+	defer s.Close()
+
+	t.Log("Running", len(testData), "compile cases")
+	for _, arg := range testData {
+		var res CompileReply
+		err = s.Compile(&arg, &res)
+
+		if err != nil {
+			t.Error(err)
+		}
+		t.Log(&res)
+	}
+}
+
+func TestBench(t *testing.T) {
+	t.SkipNow()
 	var wg sync.WaitGroup
 
 	for j := 0; j < 10; j++ {
@@ -221,22 +162,18 @@ func TestCompile10(t *testing.T) {
 	}
 	`
 				code = fmt.Sprintf(code, i)
-				res := testRun(code, "c", t)
+				s := getClient(t)
+				defer s.Close()
+				var res CompileReply
+				arg := CompileArgs{code, "c"}
+				err := s.Compile(&arg, &res)
 
-				t.Log(res)
+				if err != nil {
+					t.Error(err)
+				}
 			}
 			wg.Done()
 		}()
 	}
 	wg.Wait()
-}
-
-func TestBash(t *testing.T) {
-	var code string = `
-	pwd
-	uname -a
-	`
-	res := testRun(code, "bash", t)
-
-	t.Log(res)
 }
