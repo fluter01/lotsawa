@@ -3,8 +3,10 @@
 package lotsawa
 
 import (
+	"log"
 	"net"
 	"net/rpc"
+	"sync"
 )
 
 // RPC server
@@ -13,6 +15,7 @@ type RpcServer struct {
 	l      *net.TCPListener
 	addr   *net.TCPAddr
 	server *Server
+	wg     sync.WaitGroup
 }
 
 func NewRpcServer(server *Server, addr string) (*RpcServer, error) {
@@ -40,9 +43,20 @@ func (s *RpcServer) Init() error {
 }
 
 func (s *RpcServer) Run() {
-	go s.svr.Accept(s.l)
+	go s.Wait()
 }
 
 func (s *RpcServer) Wait() {
-	s.svr.Accept(s.l)
+	s.wg.Add(1)
+	go func() {
+		log.Println("Rpc server running on", s.l.Addr())
+		s.svr.Accept(s.l)
+		log.Println("Rpc server returns")
+		s.wg.Done()
+	}()
+	s.wg.Wait()
+}
+
+func (s *RpcServer) Stop() {
+	s.l.Close()
 }

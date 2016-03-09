@@ -37,6 +37,11 @@ func NewServer(addr string) (*Server, error) {
 	return s, nil
 }
 
+func (s *Server) Stop() {
+	s.compSvr.Stop()
+	s.rpcSvr.Stop()
+}
+
 func (s *Server) Wait() {
 	s.compSvr.Run()
 	s.rpcSvr.Wait()

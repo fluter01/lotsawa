@@ -124,6 +124,7 @@ func (s *CompilerServer) Init() error {
 func (s *CompilerServer) Loop() {
 	var req *Request
 	var stop bool = false
+	log.Println("Compile server running")
 	for !stop {
 		select {
 		case req = <-s.chReq:
@@ -133,6 +134,7 @@ func (s *CompilerServer) Loop() {
 			break
 		}
 	}
+	log.Println("Compile server stopped")
 }
 
 func (s *CompilerServer) handle(req *Request) {
@@ -159,4 +161,8 @@ func (s *CompilerServer) Submit(req *Request) {
 
 func (s *CompilerServer) Run() {
 	go s.Loop()
+}
+
+func (s *CompilerServer) Stop() {
+	s.chExit <- true
 }

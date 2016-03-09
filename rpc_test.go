@@ -6,35 +6,7 @@ import (
 	"testing"
 )
 
-var s *Server = nil
-
 const addr = "127.0.0.1:1234"
-
-var once sync.Once
-
-func startServer(t *testing.T) {
-	var err error
-
-	s, err = NewServer(addr)
-	if err != nil {
-		t.Fatal("Failed to create server:", err)
-		return
-	}
-
-	t.Log("Server running on", addr)
-	go s.Wait()
-}
-
-func getClient(t *testing.T) *CompileServiceStub {
-	var s *CompileServiceStub
-	var err error
-	s, err = NewCompileServiceStub("tcp", addr)
-	if err != nil {
-		t.Fatal("Failed to dial rpc server:", err)
-		return nil
-	}
-	return s
-}
 
 func (r *CompileReply) String() string {
 	return fmt.Sprintf("Cmd: %s\nTook:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
@@ -127,17 +99,53 @@ var testData []CompileArgs = []CompileArgs{
 	fmt.Println("hello")`, "go"},
 }
 
+func startServer(t *testing.T, exit chan bool) *Server {
+	var err error
+
+	s, err := NewServer(addr)
+	if err != nil {
+		t.Fatal("Failed to create server:", err)
+		return nil
+	}
+
+	go func() {
+		s.Wait()
+		exit <- true
+	}()
+	return s
+}
+
+func stopServer(s *Server) {
+	s.Stop()
+}
+
+func getClient(t *testing.T) *CompileServiceStub {
+	var s *CompileServiceStub
+	var err error
+	s, err = NewCompileServiceStub("tcp", addr)
+	if err != nil {
+		t.Fatal("Failed to dial rpc server:", err)
+		return nil
+	}
+	return s
+}
+
 func TestCompile(t *testing.T) {
 	var err error
-	startServer(t)
+	var exit chan bool = make(chan bool)
+	s := startServer(t, exit)
+	defer func() {
+		stopServer(s)
+		<-exit
+	}()
 
-	s := getClient(t)
-	defer s.Close()
+	c := getClient(t)
+	defer c.Close()
 
 	t.Log("Running", len(testData), "compile cases")
 	for _, arg := range testData {
 		var res CompileReply
-		err = s.Compile(&arg, &res)
+		err = c.Compile(&arg, &res)
 
 		if err != nil {
 			t.Error(err)
