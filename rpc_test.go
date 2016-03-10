@@ -96,7 +96,23 @@ var testData []CompileArgs = []CompileArgs{
 	uname -a
 	`, "sh"},
 	{`
-	fmt.Println("hello")`, "go"},
+		fmt.Println("hello lotsawa go");
+	`, "go"},
+	{`
+		var i int
+		var j int
+		i = 3
+		j = i + 5
+		fmt.Println("i =", i, "j =", j)
+	`, "go"},
+	{`package main
+import "fmt"
+func main() {
+	foo()
+}
+func foo() {
+	fmt.Println("in foo")
+}`, "go"},
 }
 
 func startServer(t *testing.T, exit chan bool) *Server {
