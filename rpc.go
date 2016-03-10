@@ -34,6 +34,15 @@ type CompileReply struct {
 	P_Error string
 }
 
+type Compiler struct {
+	Name    string
+	Version string
+}
+
+type ListReply struct {
+	Compilers []Compiler
+}
+
 // RPC service
 type CompileService struct {
 	server *CompilerServer
@@ -68,6 +77,14 @@ func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
 	return nil
 }
 
+func (c *CompileService) List(args struct{}, reply *ListReply) error {
+	for _, cname := range c.server.ListCompiler() {
+		c := c.server.GetCompiler(cname)
+		reply.Compilers = append(reply.Compilers, Compiler{c.Name(), c.Version()})
+	}
+	return nil
+}
+
 // RPC stub for the client
 type CompileServiceStub struct {
 	client *rpc.Client
@@ -87,6 +104,13 @@ func (c *CompileServiceStub) Compile(args *CompileArgs, reply *CompileReply) err
 	var err error
 
 	err = c.client.Call("CompileService.Compile", args, reply)
+	return err
+}
+
+func (c *CompileServiceStub) List(args struct{}, reply *ListReply) error {
+	var err error
+
+	err = c.client.Call("CompileService.List", args, reply)
 	return err
 }
 

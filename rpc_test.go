@@ -146,6 +146,28 @@ func getClient(t *testing.T) *CompileServiceStub {
 	return s
 }
 
+func TestList(t *testing.T) {
+	var err error
+	var exit chan bool = make(chan bool)
+	s := startServer(t, exit)
+	defer func() {
+		stopServer(s)
+		<-exit
+	}()
+
+	c := getClient(t)
+	defer c.Close()
+
+	var res ListReply
+	err = c.List(struct{}{}, &res)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(res.Compilers) < 1 {
+		t.Fail()
+	}
+}
+
 func TestCompile(t *testing.T) {
 	var err error
 	var exit chan bool = make(chan bool)
