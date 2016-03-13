@@ -113,6 +113,8 @@ func main() {
 func foo() {
 	fmt.Println("in foo")
 }`, "go"},
+	{`panic("foo")`, "go"},
+	{`i = 3`, "go"},
 }
 
 func startServer(t *testing.T, exit chan bool) *Server {

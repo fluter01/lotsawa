@@ -14,7 +14,22 @@ import (
 	"time"
 )
 
-var goBuiltinTypes []string = []string{
+var goBuiltins []string = []string{
+	"append",
+	"cap",
+	"close",
+	"complex",
+	"copy",
+	"delete",
+	"imag",
+	"len",
+	"make",
+	"new",
+	"panic",
+	"print",
+	"println",
+	"real",
+	"recover",
 	"ComplexType",
 	"FloatType",
 	"IntegerType",
@@ -43,10 +58,10 @@ var goBuiltinTypes []string = []string{
 }
 
 type Go struct {
-	path         string
-	fsrc         string
-	fannotated   string
-	builtinTypes map[string]struct{}
+	path       string
+	fsrc       string
+	fannotated string
+	builtins   map[string]struct{}
 }
 
 func (g *Go) Name() string {
@@ -70,9 +85,9 @@ func (g *Go) Init() error {
 	g.path = path
 	g.fsrc = "prog.go"
 	g.fannotated = "source.go"
-	g.builtinTypes = make(map[string]struct{})
-	for _, t := range goBuiltinTypes {
-		g.builtinTypes[t] = struct{}{}
+	g.builtins = make(map[string]struct{})
+	for _, t := range goBuiltins {
+		g.builtins[t] = struct{}{}
 	}
 	return nil
 }
@@ -110,7 +125,7 @@ func main() {
 				pkgs[ident.Name] = true
 			}
 			for k := range pkgs {
-				if _, ok := g.builtinTypes[k]; ok {
+				if _, ok := g.builtins[k]; ok {
 					continue
 				}
 				imports += fmt.Sprintf("import \"%s\"\n", k)
