@@ -5,63 +5,22 @@ package lang
 import (
 	"bytes"
 	"fmt"
-	"go/ast"
 	"go/parser"
+	"go/scanner"
 	"go/token"
 	"log"
 	"os/exec"
 	"strings"
 	"time"
+
+	"golang.org/x/tools/imports"
 )
 
-var goBuiltins []string = []string{
-	"append",
-	"cap",
-	"close",
-	"complex",
-	"copy",
-	"delete",
-	"imag",
-	"len",
-	"make",
-	"new",
-	"panic",
-	"print",
-	"println",
-	"real",
-	"recover",
-	"ComplexType",
-	"FloatType",
-	"IntegerType",
-	"Type",
-	"Type1",
-	"bool",
-	"byte",
-	"complex128",
-	"complex64",
-	"error",
-	"float32",
-	"float64",
-	"int",
-	"int16",
-	"int32",
-	"int64",
-	"int8",
-	"rune",
-	"string",
-	"uint",
-	"uint16",
-	"uint32",
-	"uint64",
-	"uint8",
-	"uintptr",
-}
-
 type Go struct {
-	path       string
-	fsrc       string
-	fannotated string
-	builtins   map[string]struct{}
+	path  string
+	fsrc  string
+	fprog string
+	opt   *imports.Options
 }
 
 func (g *Go) Name() string {
@@ -83,11 +42,10 @@ func (g *Go) Init() error {
 		return err
 	}
 	g.path = path
-	g.fsrc = "prog.go"
-	g.fannotated = "source.go"
-	g.builtins = make(map[string]struct{})
-	for _, t := range goBuiltins {
-		g.builtins[t] = struct{}{}
+	g.fsrc = "source.go"
+	g.fprog = "prog.go"
+	g.opt = &imports.Options{
+		Fragment: true,
 	}
 	return nil
 }
@@ -106,46 +64,35 @@ func (g *Go) Compile(code string) *Result {
 	}
 	filetorun = g.fsrc
 
-	var file *ast.File
+	var source string = code
 	var fset *token.FileSet
 	fset = token.NewFileSet()
-	file, err = parser.ParseFile(fset, "stdin", code, 0)
+	_, err = parser.ParseFile(fset, "stdin", code, 0)
 	if err != nil {
-		// add package and func
-		if file.Name.Name == "" {
-			var pkgs map[string]bool = make(map[string]bool)
-			var imports string
-			source := fmt.Sprintf(`package main
-
-func main() {
-	%s
-}`, code)
-			file, err = parser.ParseFile(fset, "stdin", source, 0)
-			for _, ident := range file.Unresolved {
-				pkgs[ident.Name] = true
+		if el, ok := err.(scanner.ErrorList); ok {
+			if strings.HasPrefix(el[0].Msg,
+				"expected 'package', found 'IDENT'") {
+				source = fmt.Sprintf("func main() {\n%s\n}", code)
 			}
-			for k := range pkgs {
-				if _, ok := g.builtins[k]; ok {
-					continue
-				}
-				imports += fmt.Sprintf("import \"%s\"\n", k)
-			}
-			source = fmt.Sprintf(`package main
-%s
-func main() {
-	%s
-}`, imports, code)
-			err = writeSource(fmt.Sprintf("%s/%s", dir, g.fannotated), source)
-			if err != nil {
-				result.Error = err.Error()
-				return &result
-			}
-			filetorun = g.fannotated
 		} else {
 			result.Error = err.Error()
 			return &result
 		}
 	}
+
+	processed, err := imports.Process("stdin", []byte(source), g.opt)
+	if err != nil {
+		result.Error = err.Error()
+		return &result
+	}
+
+	err = writeSource(fmt.Sprintf("%s/%s", dir, g.fprog),
+		string(processed))
+	if err != nil {
+		result.Error = err.Error()
+		return &result
+	}
+	filetorun = g.fprog
 
 	args = []string{"run", filetorun}
 	err = runTimed(g.path,

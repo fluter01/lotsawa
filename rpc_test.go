@@ -115,6 +115,25 @@ func foo() {
 }`, "go"},
 	{`panic("foo")`, "go"},
 	{`i = 3`, "go"},
+	{`i := 3`, "go"},
+	{`type S struct {
+	a int
+	}
+
+	func main() {
+	s := S{3}
+	fmt.Println(s.a)
+	}`, "go"},
+	{`s := "hello"
+	fmt.Println(s)`, "go"}, // frag
+	{`func main() {
+	fmt.Println("Hello")
+}`, "go"}, // func
+	{`package main
+	func main() {
+		fmt.Println("Hello")
+	}`, "go"}, // package
+	{`s := "hello"`, "go"}, // frag
 }
 
 func startServer(t *testing.T, exit chan bool) *Server {
