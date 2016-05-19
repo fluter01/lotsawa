@@ -24,6 +24,8 @@ type Compiler interface {
 
 // Struct hold the compiling result
 type Result struct {
+	// Unique compiling ID
+	Id string
 	// The command line used to compile this piece of code
 	Cmd string
 	// Whether the code has main function and can be executed

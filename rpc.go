@@ -18,6 +18,8 @@ type CompileArgs struct {
 }
 
 type CompileReply struct {
+	// Unique compiling ID
+	Id string
 	// The command line used to compile this piece of code
 	Cmd string
 	// Whether the code has main function and can be executed
@@ -65,6 +67,7 @@ func (c *CompileService) Compile(args *CompileArgs, reply *CompileReply) error {
 
 	res := <-req.chRes
 
+	reply.Id = res.Id
 	reply.Cmd = res.Cmd
 	reply.Error = res.Error
 	reply.C_Output = res.C_Output

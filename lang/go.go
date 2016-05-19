@@ -56,9 +56,11 @@ func (g *Go) Compile(code string) *Result {
 	var stdout, stderr bytes.Buffer
 	var args []string
 	var dir string
+	var id string
 	var filetorun string
 
-	dir, err = setupWorkspace(g, g.fsrc, code)
+	dir, id, err = setupWorkspace(g, g.fsrc, code)
+	result.Id = id
 	if err != nil {
 		return &Result{Error: err.Error()}
 	}

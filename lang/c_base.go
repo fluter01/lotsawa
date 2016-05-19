@@ -81,13 +81,15 @@ func (c *CBase) compile(caller Compiler, code, prelude string) *Result {
 	var stdErr bytes.Buffer
 	var result Result
 	var dir string
+	var id string
 	var srcFile, objFile, execFile string
 	var args []string
 
 	if caller == nil {
 		return nil
 	}
-	dir, err = createWorkspace(caller)
+	dir, id, err = createWorkspace(caller)
+	result.Id = id
 	if err != nil {
 		log.Println("Failed to setup workspace:", err)
 		result.Error = err.Error()

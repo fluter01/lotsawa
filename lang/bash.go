@@ -48,8 +48,10 @@ func (sh *Bash) Compile(code string) *Result {
 	var stdout, stderr bytes.Buffer
 	var args []string
 	var dir string
+	var id string
 
-	dir, err = createWorkspace(sh)
+	dir, id, err = createWorkspace(sh)
+	result.Id = id
 	if err != nil {
 		return &Result{Error: err.Error()}
 	}

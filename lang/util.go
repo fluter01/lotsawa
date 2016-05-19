@@ -354,20 +354,22 @@ func runContainerTimed(name string,
 	return nil
 }
 
-func createWorkspace(c Compiler) (string, error) {
+func createWorkspace(c Compiler) (string, string, error) {
 	var dir string
 	var err error
 
 	dir, err = ioutil.TempDir(DataStore, c.Name())
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
+	prefix := path.Clean(fmt.Sprintf("%s/%s", DataStore, c.Name()))
 	err = os.Chmod(dir, 0775)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return dir, nil
+	id := dir[len(prefix):]
+	return dir, id, nil
 }
 
 func writeSource(path, code string) error {
@@ -384,17 +386,17 @@ func writeSource(path, code string) error {
 	return err
 }
 
-func setupWorkspace(c Compiler, sourcefile, code string) (string, error) {
-	dir, err := createWorkspace(c)
+func setupWorkspace(c Compiler, sourcefile, code string) (string, string, error) {
+	dir, id, err := createWorkspace(c)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	srcpath := fmt.Sprintf("%s/%s", dir, sourcefile)
 	err = writeSource(srcpath, code)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return dir, nil
+	return dir, id, nil
 }
 
 func getStringBuffer(buf *bytes.Buffer) string {

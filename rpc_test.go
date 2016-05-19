@@ -9,7 +9,8 @@ import (
 const addr = "127.0.0.1:1234"
 
 func (r *CompileReply) String() string {
-	return fmt.Sprintf("Cmd: %s\nTook:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
+	return fmt.Sprintf("ID: %s\nCmd: %s\nTook:%s\nError:%s\nCompile:%s|%s\nRun:%s|%s\n",
+		r.Id,
 		r.Cmd,
 		r.Time,
 		r.Error,
