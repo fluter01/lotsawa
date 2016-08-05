@@ -185,9 +185,38 @@ func TestList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	t.Log(res)
 	if len(res.Compilers) < 1 {
 		t.Fail()
 	}
+}
+
+func TestGo(t *testing.T) {
+	var err error
+	var exit chan bool = make(chan bool)
+	s := startServer(t, exit)
+	defer func() {
+		stopServer(s)
+		<-exit
+	}()
+
+	c := getClient(t)
+	defer c.Close()
+
+	arg := CompileArgs{`
+		var i int
+		var j int
+		i = 3
+		j = i + 5
+		fmt.Println("i =", i, "j =", j)
+	`, "go"}
+	var res CompileReply
+	err = c.Compile(&arg, &res)
+
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(&res)
 }
 
 func TestCompile(t *testing.T) {

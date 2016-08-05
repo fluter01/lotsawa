@@ -19,7 +19,6 @@ import (
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/configs"
-	"github.com/opencontainers/specs"
 )
 
 const (
@@ -167,7 +166,7 @@ func loadConfig(path string) (*configs.Config, error) {
 }
 
 func createFactory() (libcontainer.Factory, error) {
-	root := specs.LinuxStateDirectory
+	root := "/run/runc"
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err

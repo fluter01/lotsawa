@@ -72,8 +72,8 @@ func (g *Go) Compile(code string) *Result {
 	_, err = parser.ParseFile(fset, "stdin", code, 0)
 	if err != nil {
 		if el, ok := err.(scanner.ErrorList); ok {
-			if strings.HasPrefix(el[0].Msg,
-				"expected 'package', found 'IDENT'") {
+			if !strings.HasPrefix(el[0].Msg,
+				"expected 'package', found 'func'") {
 				source = fmt.Sprintf("func main() {\n%s\n}", code)
 			}
 		} else {
@@ -84,6 +84,12 @@ func (g *Go) Compile(code string) *Result {
 
 	processed, err := imports.Process("stdin", []byte(source), g.opt)
 	if err != nil {
+		fmt.Println(source)
+		fmt.Println(err)
+		el := err.(scanner.ErrorList)
+		for i := 0; i < el.Len(); i++ {
+			fmt.Println(el[i])
+		}
 		result.Error = err.Error()
 		return &result
 	}
