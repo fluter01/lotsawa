@@ -19,10 +19,14 @@ import (
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	_ "github.com/opencontainers/runc/libcontainer/nsenter"
+	"github.com/opencontainers/runc/libcontainer/specconv"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const (
-	fconf = "libcontainer.json"
+	fconf     = "libcontainer.json"
+	runc_root = "/run/lotsawa/runc"
 )
 
 var (
@@ -125,6 +129,7 @@ func init() {
 		runtime.GOMAXPROCS(1)
 		runtime.LockOSThread()
 		factory, _ := libcontainer.New("")
+		fmt.Println("init")
 		if err := factory.StartInitialization(); err != nil {
 			log.Fatal(err)
 		}
@@ -134,6 +139,11 @@ func init() {
 
 func InitContainer() error {
 	var err error
+
+	err = syscall.Access(runc_root, 0x7)
+	if err != nil {
+		return err
+	}
 
 	factory, err = createFactory()
 	if err != nil {
@@ -157,17 +167,24 @@ func loadConfig(path string) (*configs.Config, error) {
 		return nil, err
 	}
 	defer f.Close()
-
-	var config configs.Config
-	if err = json.NewDecoder(f).Decode(&config); err != nil {
+	var spec *specs.Spec
+	if err = json.NewDecoder(f).Decode(&spec); err != nil {
 		return nil, err
 	}
-	return &config, nil
+
+	var config *configs.Config
+	config, err = specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
+		CgroupName:       "",
+		UseSystemdCgroup: false,
+		NoPivotRoot:      true,
+		NoNewKeyring:     true,
+		Spec:             spec,
+	})
+	return config, nil
 }
 
 func createFactory() (libcontainer.Factory, error) {
-	root := "/run/runc"
-	abs, err := filepath.Abs(root)
+	abs, err := filepath.Abs(runc_root)
 	if err != nil {
 		return nil, err
 	}
@@ -177,16 +194,6 @@ func createFactory() (libcontainer.Factory, error) {
 	})
 }
 
-func createProcess(name string, stdin io.Reader, stdout, stderr io.Writer) *libcontainer.Process {
-	return &libcontainer.Process{
-		Args:   []string{name},
-		Env:    []string{"PATH=/bin:/sbin:/usr/bin:/usr/sbin"},
-		User:   "root",
-		Stdin:  stdin,
-		Stdout: stdout,
-		Stderr: stderr,
-	}
-}
 func runContainer(name string,
 	args []string,
 	wd string,
@@ -331,7 +338,7 @@ func runContainerTimed(name string,
 	}
 
 	start := time.Now()
-	err = container.Start(process)
+	err = container.Run(process)
 	if err != nil {
 		return err
 	}
